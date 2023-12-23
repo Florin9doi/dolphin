@@ -93,6 +93,7 @@ PropertiesDialog::PropertiesDialog(QWidget* parent, const UICommon::GameFile& ga
     }
   }
 
+  tab_widget->setMinimumWidth(650);
   layout->addWidget(tab_widget);
 
   QDialogButtonBox* close_box = new QDialogButtonBox(QDialogButtonBox::Close);

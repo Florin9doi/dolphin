@@ -136,6 +136,10 @@ std::string GenerateChangelog(const picojson::array& versions)
 
 bool AutoUpdateChecker::SystemSupportsAutoUpdates()
 {
+  if (Common::GetScmDescStr().contains("-dirty"))
+  {
+    return false;
+  }
 #if defined(AUTOUPDATE) && defined(OS_SUPPORTS_UPDATER)
   return true;
 #else

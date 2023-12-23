@@ -267,7 +267,8 @@ bool GameListModel::ShouldDisplayGameListItem(int index) const
     const bool matches_filename =
         filename_visible && list_view_selected &&
         QString::fromStdString(game.GetFileName()).contains(m_term, Qt::CaseInsensitive);
-    if (!(matches_title || matches_filename))
+    const bool matches_gameid = QString::fromStdString(game.GetGameID()).contains(m_term, Qt::CaseInsensitive);
+    if (!(matches_title || matches_filename || matches_gameid))
     {
       return false;
     }

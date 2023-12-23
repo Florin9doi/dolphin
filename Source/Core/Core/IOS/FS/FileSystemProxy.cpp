@@ -771,9 +771,14 @@ IPCReply FSDevice::GetUsage(const Handle& handle, const IOCtlVRequest& request)
   LogResult(stats, "GetDirectoryStats({})", directory);
   if (!stats)
     return GetFSReply(ConvertResult(stats.Error()));
-
+  //*
   memory.Write_U32(stats->used_clusters, request.io_vectors[0].address);
   memory.Write_U32(stats->used_inodes, request.io_vectors[1].address);
+  /*/
+  memory.Write_U32(100, request.io_vectors[0].address);
+  memory.Write_U32(20, request.io_vectors[1].address);
+  WARN_LOG_FMT(IOS_FS, "GetUsage: {} -> {} {}", directory, stats->used_clusters, stats->used_inodes);
+  //*/
   return GetFSReply(IPC_SUCCESS);
 }
 

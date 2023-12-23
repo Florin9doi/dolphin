@@ -555,8 +555,13 @@ CopyResult Import(const std::string& data_bin_path, std::function<bool()> can_ov
 
   if (!WiiUtils::EnsureTMDIsImported(*ios.GetFS(), ios.GetESCore(), header->tid))
   {
-    ERROR_LOG_FMT(CORE, "WiiSave::Import: Failed to find or import TMD for title {:16x}",
-                  header->tid);
+    ERROR_LOG_FMT(CORE, "WiiSave::Import: Failed to find or import TMD for title {:16x} {}{}{}{}",
+                  header->tid,
+                  (char)(header->tid >> 24 & 0xff),
+                  (char)(header->tid >> 16 & 0xff),
+                  (char)(header->tid >>  8 & 0xff),
+                  (char)(header->tid >>  0 & 0xff)
+                );
     return CopyResult::TitleMissing;
   }
 

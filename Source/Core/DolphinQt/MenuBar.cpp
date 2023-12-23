@@ -1095,7 +1095,7 @@ void MenuBar::InstallWAD()
 void MenuBar::ImportWiiSave()
 {
   QString file =
-      DolphinFileDialog::getOpenFileName(this, tr("Select the save file"), QDir::currentPath(),
+      DolphinFileDialog::getOpenFileName(this, tr("Select the save file"), QString(),
                                          tr("Wii save files (*.bin);;"
                                             "All Files (*)"));
 

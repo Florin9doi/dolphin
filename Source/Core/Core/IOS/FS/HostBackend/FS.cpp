@@ -811,6 +811,7 @@ Result<DirectoryStats> HostFileSystem::GetDirectoryStats(const std::string& wii_
   DirectoryStats stats{};
   stats.used_inodes = static_cast<u32>(std::min<u64>(result->used_inodes, TOTAL_INODES));
   stats.used_clusters = static_cast<u32>(std::min<u64>(result->used_clusters, USABLE_CLUSTERS));
+  WARN_LOG_FMT(IOS_FS, "GetDirectoryStats: {}", wii_path);
   return stats;
 }
 
@@ -835,6 +836,10 @@ HostFileSystem::GetExtendedDirectoryStats(const std::string& wii_path)
     // add one for the folder itself
     stats.used_inodes = 1 + parent_dir.size;
     stats.used_clusters = ComputeUsedClusters(parent_dir);
+    /*
+    stats.used_inodes = (u32)10;
+    stats.used_clusters = (u32)100;
+    //*/
   }
   else
   {
