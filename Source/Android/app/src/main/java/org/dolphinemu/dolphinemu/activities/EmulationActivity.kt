@@ -63,6 +63,7 @@ import org.dolphinemu.dolphinemu.ui.main.ThemeProvider
 import org.dolphinemu.dolphinemu.utils.AfterDirectoryInitializationRunner
 import org.dolphinemu.dolphinemu.utils.DirectoryInitialization
 import org.dolphinemu.dolphinemu.utils.FileBrowserHelper
+import org.dolphinemu.dolphinemu.utils.PermissionsHandler
 import org.dolphinemu.dolphinemu.utils.RateLimiter
 import org.dolphinemu.dolphinemu.utils.ThemeHelper
 import kotlin.math.roundToInt
@@ -1014,6 +1015,11 @@ class EmulationActivity : AppCompatActivity(), ThemeProvider {
     override fun setTheme(themeId: Int) {
         super.setTheme(themeId)
         this.themeId = themeId
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        PermissionsHandler.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
     companion object {

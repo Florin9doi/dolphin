@@ -18,6 +18,7 @@ import org.dolphinemu.dolphinemu.R
 object PermissionsHandler {
     const val REQUEST_CODE_WRITE_PERMISSION = 500
     const val REQUEST_CODE_RECORD_AUDIO = 501
+    const val REQUEST_CODE_CAMERA_PERMISSION = 502
 
     private var writePermissionDenied = false
 
@@ -82,6 +83,24 @@ object PermissionsHandler {
 
         targetActivity.requestPermissions(
             arrayOf(Manifest.permission.RECORD_AUDIO), REQUEST_CODE_RECORD_AUDIO
+        )
+    }
+
+    @JvmStatic
+    @Keep
+    fun hasCameraPermission(context: Context?): Boolean {
+        val nonNullContext = context ?: DolphinApplication.getAppContext()
+        val hasCameraPermission =
+            ContextCompat.checkSelfPermission(nonNullContext, Manifest.permission.CAMERA)
+        return hasCameraPermission == PackageManager.PERMISSION_GRANTED
+    }
+
+    @JvmStatic
+    @Keep
+    fun requestCameraPermission(activity: Activity?) {
+        val targetActivity = activity ?: DolphinApplication.getAppActivity()!!
+        targetActivity.requestPermissions(
+            arrayOf(Manifest.permission.CAMERA), REQUEST_CODE_CAMERA_PERMISSION
         )
     }
 }

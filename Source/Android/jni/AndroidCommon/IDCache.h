@@ -111,6 +111,11 @@ jclass GetCoreDeviceControlClass();
 jfieldID GetCoreDeviceControlPointer();
 jmethodID GetCoreDeviceControlConstructor();
 
+jclass GetCameraClass();
+jmethodID GetCameraStart();
+jmethodID GetCameraResume();
+jmethodID GetCameraStop();
+
 jclass GetInputDetectorClass();
 jfieldID GetInputDetectorPointer();
 

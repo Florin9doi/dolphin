@@ -594,4 +594,6 @@ object NativeLibrary {
     private external fun GetCurrentGameIDUnchecked(): String
 
     private external fun GetCurrentTitleDescriptionUnchecked(): String
+
+    private external fun CameraSetData(image: ByteArray)
 }

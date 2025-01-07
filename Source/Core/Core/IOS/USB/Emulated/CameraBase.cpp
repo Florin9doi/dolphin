@@ -59,6 +59,20 @@ void CameraBase::SetData(const u8* data, u32 length)
   }
   m_image_size = length;
   memcpy(m_image_data, data, length);
+  //ERROR_LOG_FMT(IOS_USB, "SetData length={:x}", length);
+  //static bool done = false;
+  //if (!done)
+  //{
+  //  FILE* f = fopen("yugioh_dualscanner.raw", "wb");
+  //  if (!f)
+  //  {
+  //    ERROR_LOG_FMT(IOS_USB, "yugioh_dualscanner null");
+  //    return;
+  //  }
+  //  fwrite(m_image_data, m_image_size, 1, f);
+  //  fclose(f);
+  //  done = true;
+  //}
 }
 
 void CameraBase::GetData(const u8* data, u32 length)
