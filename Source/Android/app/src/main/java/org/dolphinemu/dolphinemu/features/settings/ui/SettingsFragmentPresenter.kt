@@ -17,7 +17,7 @@ import kotlinx.coroutines.withContext
 import org.dolphinemu.dolphinemu.NativeLibrary
 import org.dolphinemu.dolphinemu.R
 import org.dolphinemu.dolphinemu.activities.UserDataActivity
-import org.dolphinemu.dolphinemu.features.camera.Camera
+import org.dolphinemu.dolphinemu.features.camera.CameraHelper
 import org.dolphinemu.dolphinemu.features.input.model.ControlGroupEnabledSetting
 import org.dolphinemu.dolphinemu.features.input.model.InputMappingBooleanSetting
 import org.dolphinemu.dolphinemu.features.input.model.InputMappingDoubleSetting
@@ -193,8 +193,8 @@ class SettingsFragmentPresenter(
                 R.array.emulatedCameraValues
             )
         )
-        var camerasEntries = Camera.getCameraEntries()
-        var cameraValues = Camera.getCameraValues()
+        var camerasEntries = CameraHelper.getCameraEntries()
+        var cameraValues = CameraHelper.getCameraValues()
         sl.add(
             StringSingleChoiceSetting(
                 context,

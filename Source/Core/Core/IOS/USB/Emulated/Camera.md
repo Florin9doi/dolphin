@@ -52,3 +52,62 @@ index 5486190..a895eaf 100644
 ```
 py -m qsc examples\dolphin-x64.yml
 ```
+
+
+
+@startuml
+participant User as u
+participant Emu as e
+participant Camera.kt as c
+participant "Virtual\nCamera\nActive" as va
+participant "Host\nCamera\nActive" as ha
+participant cameraLifecycle as l
+participant cameraProvider as p
+
+u->e : Open Emu
+e->c : <font color=green>OnResume
+c->l : Start
+activate l
+
+u->e : Close Emu
+e->c : <font color=red>OnPause
+c->l : Stop
+deactivate l
+
+u->e : Open Emu
+e->c : <font color=green>OnResume
+c->l : Start
+activate l
+
+u->e : Start Game
+e->c : StartCamera(320x240)
+c->va : <font color=green>Set
+activate va
+c->p : <font color=green>Bind
+activate p
+c->ha : <font color=green>Set
+activate ha
+
+u->e : Close Emu
+e->c : <font color=red>OnPause
+c->p : <font color=red>Unbind
+deactivate p
+c -x l : Stop
+deactivate l
+
+u->e : Open Emu
+e->c : <font color=green>OnResume
+c->p : <font color=green>Bind
+activate p
+c -x l : Start
+activate l
+
+u->e : Close Game
+e->c : StopCamera()
+c->p : <font color=red>Unbind
+deactivate p
+c->ha : <font color=red>Clear
+deactivate ha
+c->va : <font color=red>Clear
+deactivate va
+@enduml

@@ -3,68 +3,59 @@
 package org.dolphinemu.dolphinemu.features.camera
 
 import android.content.Context
-import android.graphics.ImageFormat
+import android.graphics.SurfaceTexture
 import android.hardware.Camera
 import android.hardware.Camera.CameraInfo
+import android.os.Build
 import android.os.Handler
 import android.util.Log
-import android.util.Size
-import android.view.OrientationEventListener
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.LifecycleOwner
+import android.view.Display
+import android.view.Surface
 import org.dolphinemu.dolphinemu.DolphinApplication
 import org.dolphinemu.dolphinemu.NativeLibrary
-import org.dolphinemu.dolphinemu.features.settings.model.IntSetting
 import org.dolphinemu.dolphinemu.features.settings.model.StringSetting
 import org.dolphinemu.dolphinemu.utils.PermissionsHandler
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 
-class Camera {
+class CameraHelper {
     companion object {
-        val TAG = "Camera"
-        private var instance: Camera? = null
-
+        val TAG = "CameraHelper"
+        private var instance: CameraHelper? = null
+        private lateinit var handler: Handler
+        private lateinit var camera: Camera
+        private val cameraInfo = CameraInfo()
+        private lateinit var previewSize: Camera.Size
+        private var surfaceTexture: SurfaceTexture? = null
+        private lateinit var display: Display
         private var cameraEntries = arrayOf<String>()
         private var cameraValues = arrayOf<String>()
-
         private var width = 0
         private var height = 0
         private var virtualCamRunning: Boolean = false
         private var hostCamRunning: Boolean = false
-        private lateinit var imageCapture: ImageCapture
-        private lateinit var imageAnalyzer: ImageAnalysis
-        private lateinit var cameraExecutor: ExecutorService
-        private lateinit var handler: Handler
 
         fun getInstance(context: Context) = instance ?: synchronized(this) {
-            instance ?: Camera().also {
+            instance ?: CameraHelper().also {
                 instance = it
-                val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
-                cameraProviderFuture.addListener({
-                    val cameraProvider = cameraProviderFuture.get()
-                    val cameraInfos = cameraProvider.getAvailableCameraInfos()
-                    var index = 0;
-                    fun getCameraDescription(type: Int) : String {
-                        return when (type) {
-                            CameraMetadata.LENS_FACING_BACK -> "Back"
-                            CameraMetadata.LENS_FACING_FRONT -> "Front"
-                            CameraMetadata.LENS_FACING_EXTERNAL -> "External"
-                            else -> "Unknown"
-                        }
-                    }
-                    for (camera in cameraInfos) {
-                        cameraEntries += "${index}: ${getCameraDescription(camera.lensFacing)}"
-                        cameraValues += index++.toString()
-                    }
-                }, ContextCompat.getMainExecutor(context))
-                cameraExecutor = Executors.newSingleThreadExecutor()
                 handler = Handler(DolphinApplication.getAppContext().mainLooper)
+                surfaceTexture = SurfaceTexture(5)
+
+                fun getCameraDescription(facing: Int) : String {
+                    return when (facing) {
+                        CameraInfo.CAMERA_FACING_BACK -> "Back"
+                        CameraInfo.CAMERA_FACING_FRONT -> "Front"
+                        else -> "Unknown"
+                    }
+                }
+                for (cameraId in 0 until Camera.getNumberOfCameras()) {
+                    val cameraInfo = CameraInfo()
+                    Camera.getCameraInfo(cameraId, cameraInfo)
+                    cameraEntries += "${cameraId}: ${getCameraDescription(cameraInfo.facing)}"
+                    cameraValues += "${cameraId}"
+                }
             }
         }
 
         fun onStart() {
-            Log.i(TAG, "onStart")
             handler.postDelayed(object : Runnable {
                 override fun run() {
                     resumeCamera()
@@ -73,7 +64,6 @@ class Camera {
         }
 
         fun onStop() {
-            Log.i(TAG, "onStop")
             handler.postDelayed(object : Runnable {
                 override fun run() {
                     pauseCamera()
@@ -86,7 +76,7 @@ class Camera {
 
         @JvmStatic
         fun startCamera(width: Int, height: Int) {
-            Log.i(TAG, "startCamera: " + Companion.width + "x" + Companion.height)
+            Log.i(TAG, "startCamera: ${width}x${height}")
             this.width = width
             this.height = height
             if (!PermissionsHandler.hasCameraAccess(DolphinApplication.getAppContext())) {
@@ -94,6 +84,11 @@ class Camera {
                 return
             }
             virtualCamRunning = true
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                display = DolphinApplication.getAppContext().display!!
+            } else {
+                display = DolphinApplication.getAppActivity().windowManager.defaultDisplay
+            }
             resumeCamera()
         }
 
@@ -111,30 +106,34 @@ class Camera {
                 return
             hostCamRunning = true
 
-            val cameraProviderFuture = ProcessCameraProvider.getInstance(DolphinApplication.getAppContext())
-            cameraProviderFuture.addListener({
-                val cameraProvider = cameraProviderFuture.get()
+            var cameraId = Integer.parseInt(StringSetting.MAIN_SELECTED_CAMERA.string)
+            Camera.getCameraInfo(cameraId, cameraInfo)
+            camera = Camera.open(cameraId)
+            val param: Camera.Parameters = camera.getParameters()
 
-                val cameraSelector = cameraProvider.getAvailableCameraInfos()
-                    .get(Integer.parseInt(StringSetting.MAIN_SELECTED_CAMERA.string))
-                    .cameraSelector
-                val preview = Preview.Builder().build()
-                imageCapture = ImageCapture.Builder()
-                    .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-                    .build()
-                imageAnalyzer = ImageAnalysis.Builder()
-                    .setTargetResolution(Size(width, height))
-                    .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
-                    .build()
-                    .also {
-                        it.setAnalyzer(cameraExecutor, ImageProcessor())
-                    }
-
-                if (IntSetting.MAIN_EMULATION_ORIENTATION.int < 0) {
-                    orientationEventListener.enable()
+            // step 1: start finding the largest preview
+            previewSize = param.getSupportedPreviewSizes()[0]
+            for (preview in param.getSupportedPreviewSizes()) {
+                if (preview.width > previewSize.width || preview.height > previewSize.height) {
+                    previewSize = preview
                 }
-                cameraProvider.bindToLifecycle(DolphinApplication.getAppActivity() as LifecycleOwner, cameraSelector, preview, imageCapture, imageAnalyzer)
-            }, ContextCompat.getMainExecutor(DolphinApplication.getAppContext()))
+            }
+            // step 2: find the smallest preview which can fit the expected size
+            var rotation = getRotation()
+            for (preview in param.getSupportedPreviewSizes()) {
+                Log.i(TAG, "supportedPreviewSize : ${preview.width}x${preview.height}")
+                if ((preview.width < previewSize.width || preview.height < previewSize.height) &&
+                    (((rotation ==  0 || rotation == 180) && preview.width >= width && preview.height >= height) ||
+                            ((rotation == 90 || rotation == 270) && preview.width >= height && preview.height >= width))) {
+                    previewSize = preview
+                }
+            }
+            Log.i(TAG, "previewSize : ${previewSize.width}x${previewSize.height}")
+            param.setPreviewSize(previewSize.width, previewSize.height)
+            camera.setParameters(param)
+            camera.setPreviewTexture(surfaceTexture)
+            camera.setPreviewCallback(previewCallback)
+            camera.startPreview()
         }
 
         private fun pauseCamera() {
@@ -143,87 +142,64 @@ class Camera {
             Log.i(TAG, "pauseCamera")
             hostCamRunning = false
 
-            if (IntSetting.MAIN_EMULATION_ORIENTATION.int < 0) {
-                orientationEventListener.disable()
-            }
-            val cameraProviderFuture = ProcessCameraProvider.getInstance(DolphinApplication.getAppContext())
-            cameraProviderFuture.addListener({
-                val cameraProvider = cameraProviderFuture.get()
-                cameraProvider.unbindAll()
-            }, ContextCompat.getMainExecutor(DolphinApplication.getAppContext()))
+            camera.setPreviewCallback(null)
+            camera.stopPreview()
+            camera.release()
         }
 
-        private val orientationEventListener by lazy {
-            object : OrientationEventListener(DolphinApplication.getAppContext()) {
-                override fun onOrientationChanged(orientation: Int) {
-                    if (orientation == ORIENTATION_UNKNOWN) {
-                        return
-                    }
-                    val rotation: Int = UseCase.snapToSurfaceRotation(orientation)
-                    imageAnalyzer.targetRotation = rotation
-                }
+        fun getRotation(): Int {
+            val displayRotation = when (display.rotation) {
+                Surface.ROTATION_90 -> 90
+                Surface.ROTATION_180 -> 180
+                Surface.ROTATION_270 -> 270
+                else -> 0
+            }
+            if (cameraInfo.facing == CameraInfo.CAMERA_FACING_BACK) {
+                return (360 + cameraInfo.orientation - displayRotation) % 360
+            } else {
+                return (360 + cameraInfo.orientation + displayRotation) % 360
             }
         }
 
-        private class ImageProcessor : ImageAnalysis.Analyzer {
-            override fun analyze(image: ImageProxy) {
-                if (image.format != ImageFormat.YUV_420_888) {
-                    Log.e(TAG, "Error: Unhandled image format: ${image.format}")
-                    image.close()
-                    stopCamera()
-                    return
-                }
-                val cameraRotation = image.imageInfo.rotationDegrees
+        object previewCallback: Camera.PreviewCallback {
+            override fun onPreviewFrame(nv21data: ByteArray, camera: Camera) {
+                var rotation = getRotation()
 
-                Log.i(TAG, "analyze sz=${image.width}x${image.height} / fmt=${image.format} / "
-                    + "rot=${image.imageInfo.rotationDegrees} / "
-//                    + "px0=${image.planes[0].pixelStride} / px1=${image.planes[1].pixelStride} / px2=${image.planes[2].pixelStride} / "
-//                    + "row0=${image.planes[0].rowStride} / row1=${image.planes[1].rowStride} / row2=${image.planes[2].rowStride}"
-                )
-
-                // Convert YUV_420_888 to YUY2
+                // Convert NV21 to YUY2
                 val yuy2Image = ByteArray(2 * width * height)
-                if (cameraRotation == 0 || cameraRotation == 180) {
+                if (rotation == 0 || rotation == 180) {
                     for (line in 0 until height) {
-                        val yLine = if (cameraRotation == 0) line else (height-1-line)
-                        val uvLine = if (cameraRotation == 0) (line / 2) else ((height-1-line) / 2)
+                        val yLine = if (rotation == 0) line else (height-1-line)
+                        val uvLine = previewSize.height + if (rotation == 0) (line / 2) else ((height-1-line) / 2)
                         for (col in 0 until width) {
                             val yuy2Pos = 2 * (width * line + col)
-                            val yCol = if (cameraRotation == 0) col else (width-1-col)
-                            val uvCol = if (cameraRotation == 0) (col / 2) else ((width-1-col) / 2)
-                            val yPos = image.planes[0].rowStride * yLine  + image.planes[0].pixelStride * yCol
-                            val uPos = image.planes[1].rowStride * uvLine + image.planes[1].pixelStride * uvCol
-                            val vPos = image.planes[2].rowStride * uvLine + image.planes[2].pixelStride * uvCol
-                            yuy2Image.set(yuy2Pos, image.planes[0].buffer.get(yPos))
-                            yuy2Image.set(yuy2Pos + 1, if (col % 2 == 0) image.planes[1].buffer.get(uPos)
-                            else image.planes[2].buffer.get(vPos))
+                            val yCol = if (rotation == 0) (col) else (width-1-col)
+                            val uvCol = if (rotation == 0) (col and 1.inv()) else (width-1-col and 1.inv())
+                            val yPos = previewSize.width * yLine  + yCol
+                            val uPos = previewSize.width * uvLine + uvCol + 1
+                            val vPos = previewSize.width * uvLine + uvCol
+                            yuy2Image.set(yuy2Pos, nv21data.get(yPos))
+                            yuy2Image.set(yuy2Pos + 1, if (col % 2 == 0) nv21data.get(uPos)
+                                                                    else nv21data.get(vPos))
                         }
                     }
-                } else if (cameraRotation == 90 || cameraRotation == 270) {
-                    for (line in 0 until Math.min(height, image.width)) {
-                        val yCol = if (cameraRotation == 90) line else (image.width-1-line)
-                        val uvCol = if (cameraRotation == 90) (line / 2) else ((image.width-1-line) / 2)
-                        for (col in 0 until Math.min(width, image.height)) {
-                            val yuy2Pos = 2 * (width * line + col)
-                            val yLine = if (cameraRotation == 90) (image.height-1-col) else col
-                            val uvLine = if (cameraRotation == 90) ((image.height-1-col) / 2) else (col / 2)
-                            val yPos = image.planes[0].rowStride * yLine  + image.planes[0].pixelStride * yCol
-                            val uPos = image.planes[1].rowStride * uvLine + image.planes[1].pixelStride * uvCol
-                            val vPos = image.planes[2].rowStride * uvLine + image.planes[2].pixelStride * uvCol
-                            yuy2Image.set(yuy2Pos, image.planes[0].buffer.get(yPos))
-                            yuy2Image.set(yuy2Pos + 1, if (col % 2 == 0) image.planes[1].buffer.get(uPos)
-                            else image.planes[2].buffer.get(vPos))
-                        }
-                    }
-
+                } else if (rotation == 90 || rotation == 270) {
                     for (line in 0 until height) {
-                        for (col in image.height until width) {
+                        val yCol = if (rotation == 90) line else (width-1-line)
+                        val uvCol = if (rotation == 90) (line and 1.inv()) else (width-1-line and 1.inv())
+                        for (col in 0 until width) {
                             val yuy2Pos = 2 * (width * line + col)
-                            yuy2Image.set(yuy2Pos + 1, 127)
+                            val yLine = if (rotation == 90) (previewSize.height-1-col) else col
+                            val uvLine = previewSize.height + if (rotation == 90) ((previewSize.height-1-col) / 2) else (col / 2)
+                            val yPos = previewSize.width * yLine  + yCol
+                            val uPos = previewSize.width * uvLine + uvCol + 1
+                            val vPos = previewSize.width * uvLine + uvCol
+                            yuy2Image.set(yuy2Pos, nv21data.get(yPos))
+                            yuy2Image.set(yuy2Pos + 1, if (col % 2 == 0) nv21data.get(uPos)
+                            else nv21data.get(vPos))
                         }
                     }
                 }
-                image.close()
                 NativeLibrary.CameraSetData(yuy2Image)
             }
         }

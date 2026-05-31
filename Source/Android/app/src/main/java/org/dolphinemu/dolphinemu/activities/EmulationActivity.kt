@@ -36,6 +36,7 @@ import org.dolphinemu.dolphinemu.R
 import org.dolphinemu.dolphinemu.databinding.ActivityEmulationBinding
 import org.dolphinemu.dolphinemu.databinding.DialogInputAdjustBinding
 import org.dolphinemu.dolphinemu.databinding.DialogNfcFiguresManagerBinding
+import org.dolphinemu.dolphinemu.features.camera.CameraHelper
 import org.dolphinemu.dolphinemu.features.infinitybase.InfinityConfig
 import org.dolphinemu.dolphinemu.features.infinitybase.model.Figure
 import org.dolphinemu.dolphinemu.features.infinitybase.ui.FigureSlot
@@ -315,9 +316,15 @@ class EmulationActivity : AppCompatActivity(), ThemeProvider {
         DolphinSensorEventListener.setDeviceRotation(windowManager.defaultDisplay.rotation)
     }
 
+    override fun onStart() {
+        super.onStart()
+        CameraHelper.Companion.onStart()
+    }
+
     override fun onStop() {
         super.onStop()
         settings.saveSettings()
+        CameraHelper.Companion.onStop()
     }
 
     fun onTitleChanged() {

@@ -19,7 +19,7 @@ import com.google.android.material.tabs.TabLayout
 import org.dolphinemu.dolphinemu.R
 import org.dolphinemu.dolphinemu.adapters.PlatformPagerAdapter
 import org.dolphinemu.dolphinemu.databinding.ActivityMainBinding
-import org.dolphinemu.dolphinemu.features.camera.Camera
+import org.dolphinemu.dolphinemu.features.camera.CameraHelper
 import org.dolphinemu.dolphinemu.features.settings.model.IntSetting
 import org.dolphinemu.dolphinemu.features.settings.model.NativeConfig
 import org.dolphinemu.dolphinemu.features.settings.ui.MenuTag
@@ -77,7 +77,7 @@ class MainActivity : AppCompatActivity(), MainView, OnRefreshListener, ThemeProv
         }
 
         presenter.onCreate()
-        Camera.getInstance(applicationContext)
+        CameraHelper.getInstance(applicationContext)
 
         // Stuff in this block only happens when this activity is newly created (i.e. not a rotation)
         if (savedInstanceState == null) {
