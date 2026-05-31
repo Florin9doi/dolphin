@@ -11,7 +11,7 @@ import android.os.Environment;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
 
-import org.dolphinemu.dolphinemu.features.camera.Camera;
+import org.dolphinemu.dolphinemu.features.camera.CameraHelper;
 import org.jetbrains.annotations.NotNull;
 
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
@@ -77,7 +77,7 @@ public class PermissionsHandler
   public static void onRequestPermissionsResult(int requestCode, @NotNull String[] permissions, @NotNull int[] grantResults) {
     if (requestCode == PermissionsHandler.REQUEST_CODE_CAMERA_PERMISSION) {
       if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-        Camera.Companion.resumeCamera();
+        CameraHelper.Companion.resumeCamera();
       }
     }
   }

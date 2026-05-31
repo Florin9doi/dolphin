@@ -784,7 +784,7 @@ JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved)
                        "(Lorg/dolphinemu/dolphinemu/features/input/model/CoreDevice;J)V");
   env->DeleteLocalRef(core_device_control_class);
 
-  const jclass camera_class = env->FindClass("org/dolphinemu/dolphinemu/features/camera/Camera");
+  const jclass camera_class = env->FindClass("org/dolphinemu/dolphinemu/features/camera/CameraHelper");
   s_camera_class = reinterpret_cast<jclass>(env->NewGlobalRef(camera_class));
   s_camera_start = env->GetStaticMethodID(camera_class, "startCamera", "(II)V");
   s_camera_resume = env->GetStaticMethodID(camera_class, "resumeCamera", "()V");
